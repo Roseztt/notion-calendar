@@ -1,0 +1,35 @@
+# Rebuilds the calendar from Notion every 6 hours
+name: Update calendar
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # every 6 hours (UTC)
+  workflow_dispatch:        # lets you run it by hand from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests
+
+      # The key comes from the repo's secrets, not the script
+      - run: python notion_calendar.py -o docs/index.html
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          TZ: America/New_York
+
+      # Save the new calendar if anything changed
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add docs/index.html
+          git diff --cached --quiet || (git commit -m "Update calendar" && git push)
